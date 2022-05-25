@@ -4,23 +4,15 @@
 # @create time: 2022/05/20
 # @说明       : 本文件实现了请求xasset-ui的逻辑
 
-import os, sys
-
-from numpy import True_, int64, isin
-sys.path.append(os.getcwd())
-
 import json
 from xasset.client.conn import Conn
 from xasset.client.param import Param
 from xasset.utils.utils import Utils
 from xasset.auth.account import XassetAccount
 
-# 主要URI参数
-# 浏览器数据
-Browser_Srdscir_URI = '/xasset/browser/v1/srdscir'
-Browser_QueryAsset_URI =  '/xasset/browser/v1/queryasset'
-
 # 主要资产操作
+FileApiGetStoken         = "/xasset/file/v1/getstoken"
+
 QueryAsset_URI =  '/xasset/horae/v1/query'
 CreateAsset_URI = '/xasset/horae/v1/create'
 AlterAsset_URI = '/xasset/horae/v1/alter'
@@ -36,17 +28,36 @@ ListSrdsByAst_URI = '/xasset/horae/v1/listsdsbyast'
 History_URI = '/xasset/horae/v1/history'
 
 class Client(object):
-    def browser_srdscir(self, asset_id):
-        data = {}
-        data['asset_id'] = asset_id
-        return self._conn.post(Browser_Srdscir_URI, data)
+    def get_stoken(self, param):
+        if not Param.stoken_valid(param):
+            print("stoken param invalid, param: %s" % param)
+            return None
+        
+        addr = param['account']['addr']
+        sk = param['account']['sk']
+        account = XassetAccount(addr, sk)
+        nonce = Utils.gen_nonce()
+        signMsg = '%d' % (nonce)
+        sign = account.sign_ecdsa(signMsg)
+        data = {
+            'nonce': nonce,
+            'addr': addr,
+            'pkey': account.public_key(),
+            'sign': sign,
+        }
 
-    def browser_query_asset(self, asset_id, page, limit):
-        data = {}
-        data['asset_id'] = asset_id
-        data['page'] = page
-        data['limit'] = limit
-        return self._conn.post(Browser_QueryAsset_URI, data)
+        resp = self._conn.sign_post(FileApiGetStoken, data)
+        if 'errno' not in resp.keys():
+            print("panic, resp: %s" % resp)
+            return None
+        if resp['errno'] != 0:
+            print("error, resp: %s" % resp)
+            return None
+        print("get stoken succ. resp: %s" % resp)
+        if 'accessInfo' not in resp.keys():
+            return None
+        return resp['accessInfo']
+        
 
     def query_asset(self, asset_id):
         data = {
@@ -261,17 +272,67 @@ class Client(object):
         print("consume shard succ. resp: %s" % resp)
         return 0
     
-    def list_asset_by_addr(self, param):
-        return None
+    def list_asset_by_addr(self, status, addr, page):
+        data = {
+            'status': status,
+            'addr': addr,
+            'page': page,
+        }
+        resp = self._conn.sign_post(ListAstByAddr_URI, data)
+        if 'errno' not in resp.keys():
+            print("panic, resp: %s" % resp)
+            return None
+        if resp['errno'] != 0:
+            print("error, resp: %s" % resp)
+            return None
+        print("list asset by addr succ. resp: %s" % resp)
+        return resp
 
-    def list_shards_by_addr(self, param):
-        return None
+    def list_shards_by_addr(self, addr, page):
+        data = {
+            'addr': addr,
+            'page': page,
+        }
+        resp = self._conn.sign_post(ListSrdsByAddr_URI, data)
+        if 'errno' not in resp.keys():
+            print("panic, resp: %s" % resp)
+            return None
+        if resp['errno'] != 0:
+            print("error, resp: %s" % resp)
+            return None
+        print("list shards by addr succ. resp: %s" % resp)
+        return resp
     
-    def list_shards_by_asset(self, param):
-        return None
+    def list_shards_by_asset(self, asset_id, cursor, limit):
+        data = {
+            'asset_id': asset_id,
+            'cursor': cursor,
+            'limit': limit,
+        }
+        resp = self._conn.sign_post(ListSrdsByAst_URI, data)
+        if 'errno' not in resp.keys():
+            print("panic, resp: %s" % resp)
+            return None
+        if resp['errno'] != 0:
+            print("error, resp: %s" % resp)
+            return None
+        print("list shards by asset succ. resp: %s" % resp)
+        return resp
     
-    def history(self, param):
-        return None
+    def history(self, asset_id, page):
+        data = {
+            'asset_id': asset_id,
+            'page': page,
+        }
+        resp = self._conn.sign_post(History_URI, data)
+        if 'errno' not in resp.keys():
+            print("panic, resp: %s" % resp)
+            return None
+        if resp['errno'] != 0:
+            print("error, resp: %s" % resp)
+            return None
+        print("list history succ. resp: %s" % resp)
+        return resp
 
     def __init__(self, ui, app_id, ak, sk):
         self._conn = Conn(ui, app_id, ak, sk)

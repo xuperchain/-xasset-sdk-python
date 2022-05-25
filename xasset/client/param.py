@@ -27,6 +27,28 @@ class Param(object):
         return data
 
     @staticmethod
+    def stoken_valid(param):
+        if 'account' not in param:
+            return False
+        if not Param.account_valid(param['account']):
+            return False
+        return True
+
+    @staticmethod
+    def upload_valid(param):
+        if 'account' not in param:
+            return False
+        if not Param.account_valid(param['account']):
+            return False
+        if 'file_name' not in param:
+            return False
+        if 'property' not in param:
+            return False
+        if 'file_path' not in param or 'data_byte' not in param:
+            return False
+        return True
+
+    @staticmethod
     def query_shard_valid(param):
         if 'asset_id' not in param:
             return False
@@ -107,7 +129,11 @@ class Param(object):
     def alter_valid(param):
         if 'asset_id' not in param:
             return False
-            
+        if 'account' not in param:
+            return False
+        if not Param.account_valid(param['account']):
+            return False
+
         price_check = False
         if 'amount' in param.keys():
             amount_check = True
@@ -119,7 +145,12 @@ class Param(object):
         info_check = False
         if 'asset_info' in param.keys():
             info_check = True
-        return price_check or price_check or info_check
+
+        file_check = False
+        if 'file_hash' in param.keys():
+            file_check = True
+
+        return price_check or price_check or info_check or file_check
       
     @staticmethod
     def publish_valid(param):
@@ -178,10 +209,12 @@ class Param(object):
     def transfer_valid(param):
         if 'asset_id' not in param:
             return False
-        if 'account' not in param:
-            return False
         if 'shard_id' not in param:
             return False
         if 'to_addr' not in param:
             return False
-        
+        if 'account' not in param:
+            return False
+        if not Param.account_valid(param['account']):
+            return False
+        return True
