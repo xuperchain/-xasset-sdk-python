@@ -29,7 +29,7 @@ class Conn(object):
             print('resp err, resp: %s' % response)
         return resp
     
-    def sign_post(self, path, data):
+    def sign_post(self, path, data, timestamp=None, app=None, sign=None):
         host = urllib3.get_host(self._cfg._url)
         md5_msg = json.dumps(data).encode('utf-8')
         md5 = hashlib.md5(md5_msg).hexdigest().lower()
@@ -39,14 +39,22 @@ class Conn(object):
             'host': host[1],
             'AppId': '%d' % self._cfg._app_id,
 	    }
-        headers_to_sign = {
-            'content-type': 'application/x-www-form-urlencoded;charset=utf-8',
-		    'content-md5': md5,
-            'host': host[1],
-        }
+        if timestamp is not None:
+            headers['Timestamp'] = timestamp
+        if app is not None:
+            headers['App'] = app
 
-        sign = self.sign('POST', path, headers, headers_to_sign)
-        headers['Authorization'] = sign
+        if sign is not None:
+            headers['Authorization'] = sign
+        else:
+            headers_to_sign = {
+                'content-type': 'application/x-www-form-urlencoded;charset=utf-8',
+		        'content-md5': md5,
+                'host': host[1],
+            }
+            sign = self.sign('POST', path, headers, headers_to_sign)
+            headers['Authorization'] = sign
+            
         url = self._cfg._url + path
         response = requests.post(url=url, data=data, headers=headers)
         resp = {}
